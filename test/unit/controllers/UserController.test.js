@@ -1,5 +1,6 @@
 var assert = require('assert');
 var request = require('supertest');
+var _ = require('lodash');
 
 var adminAuth = {
   Authorization: 'Basic YWRtaW5AZXhhbXBsZS5jb206YWRtaW4xMjM0'
@@ -15,7 +16,7 @@ describe('User Controller', function() {
 
   var adminUserId;
   var newUserId;
-  var roleId;
+  var testRoleId;
   var inactiveRoleId;
 
   describe('User with Admin Role', function() {
@@ -40,6 +41,51 @@ describe('User Controller', function() {
             done(err);
 
           });
+      });
+
+      it('should be able to remove a user from a role', function(done) {
+        var ok = Role.find({
+          name: 'registered'
+        });
+
+        ok.then(function(role) {
+            request(sails.hooks.http.app)
+              .post('/user')
+              .set('Authorization', adminAuth.Authorization)
+              .send({
+                username: 'abouttoberemoveduser',
+                email: 'abouttoberemoveduser@example.com',
+                password: 'user1234'
+              })
+              .expect(200)
+              .end(function(err, res) {
+
+                assert.ifError(err);
+                var user = res.body;
+                Role.findOne({
+                    name: 'registered'
+                  }).populate('users', {
+                    id: user.id
+                  })
+                  .then(function(role) {
+                    assert.equal(user.username, 'abouttoberemoveduser');
+                    assert(_.contains(_.pluck(role.users, 'id'), user.id));
+
+                    request(sails.hooks.http.app)
+                      .delete('/role/' + role.id + '/users/' + user.id)
+                      .set('Authorization', adminAuth.Authorization)
+                      .expect(200)
+                      .end(function(err, res) {
+                        // the user id should not be in the list anymore
+                        assert(!_.includes(_.pluck(res.users, 'id'), user.id));
+                        done();
+                      });
+                  });
+
+              });
+          })
+          .catch(done);
+
       });
 
     });
@@ -100,7 +146,7 @@ describe('User Controller', function() {
           })
           .expect(201)
           .end(function(err, res) {
-            roleId = res.body.id; // 4
+            testRoleId = res.body.id; // 4
             done(err);
           });
       });
@@ -121,7 +167,7 @@ describe('User Controller', function() {
               .send({
                 model: roleModel.id,
                 action: 'update',
-                role: roleId,
+                role: testRoleId,
                 createdBy: adminUserId,
                 criteria: {
                   blacklist: ['id', 'stream'],
@@ -154,10 +200,10 @@ describe('User Controller', function() {
               .send({
                 model: roleModel.id,
                 action: 'update',
-                role: roleId,
+                role: testRoleId,
                 createdBy: adminUserId,
                 criteria: {
-                    blacklist: ['id']
+                  blacklist: ['id']
                 },
                 relation: 'owner'
               })
@@ -202,13 +248,13 @@ describe('User Controller', function() {
               .send({
                 model: roleModel.id,
                 action: 'read',
-                role: roleId,
+                role: testRoleId,
                 createdBy: adminUserId,
                 criteria: {
                   where: {
                     active: true
                   },
-                  blacklist: [ 'name', 'createdAt' ]
+                  blacklist: ['name', 'createdAt']
                 }
               })
               .expect(201)
@@ -234,7 +280,7 @@ describe('User Controller', function() {
               .send({
                 model: permissionModel.id,
                 action: 'read',
-                role: roleId,
+                role: testRoleId,
                 createdBy: adminUserId,
                 criteria: {
                   where: {
@@ -270,7 +316,7 @@ describe('User Controller', function() {
             email: 'newuser1@example.com',
             password: 'lalalal1234'
           })
-          .expect(400)
+          .expect(403)
           .end(function(err, res) {
 
             var user = res.body;
@@ -313,7 +359,7 @@ describe('User Controller', function() {
       it('should be able to update role name', function(done) {
         // it should be able to do this, because an earlier test set up the role and permission for it
         request(sails.hooks.http.app)
-          .put('/role/' + roleId)
+          .put('/role/' + testRoleId)
           .set('Authorization', newUserAuth.Authorization)
           .send({
             name: 'updatedName'
@@ -331,14 +377,14 @@ describe('User Controller', function() {
       it('should not be able to update role id', function(done) {
         // it should be able to do this, because an earlier test set up the role and permission for it
         request(sails.hooks.http.app)
-          .put('/role/' + roleId)
+          .put('/role/' + testRoleId)
           .set('Authorization', newUserAuth.Authorization)
           .send({
             id: 99
           })
-          .expect(400)
+          .expect(403)
           .end(function(err, res) {
-            assert(res.body.hasOwnProperty('error'))
+            assert(res.body.hasOwnProperty('error'));
             assert.ifError(err);
             done(err);
 
@@ -354,13 +400,36 @@ describe('User Controller', function() {
           .send({
             name: 'updatedInactiveName'
           })
-          .expect(400)
+          .expect(403)
           .end(function(err, res) {
-            assert(res.body.hasOwnProperty('error'))
+            assert(res.body.hasOwnProperty('error'));
             assert.ifError(err);
             done(err);
 
           });
+      });
+
+      it('should be able to update role name for an inactive role, if user is the owner of the role', function(done) {
+
+        Role.create({
+            name: 'inactiveOwnedRole',
+            active: false,
+            owner: newUserId
+          })
+          .then(function(role) {
+            request(sails.hooks.http.app)
+              .put('/role/' + role.id)
+              .set('Authorization', newUserAuth.Authorization)
+              .send({
+                name: 'newInactiveOwnedRoleName'
+              })
+              .expect(200)
+              .end(function(err, res) {
+                assert.ifError(err);
+                Role.destroy(role.id, done);
+              });
+          });
+
       });
 
 
@@ -385,16 +454,27 @@ describe('User Controller', function() {
           });
       });
 
-      it('should have filtered out all of the permissions results', function(done) {
+      it.skip('should have filtered out all of the permissions results', function(done) {
 
         request(sails.hooks.http.app)
           .get('/permission')
           .set('Authorization', newUserAuth.Authorization)
-          .send({
-            name: 'updatedInactiveName'
-          })
-          .expect(404)
+          .expect(200)
           .end(function(err, res) {
+            assert.equal(res.body.length, 0);
+            done(err);
+          });
+      });
+
+      it('should return data from /user/me', function(done) {
+
+        request(sails.hooks.http.app)
+          .get('/user/me')
+          .set('Authorization', newUserAuth.Authorization)
+          .expect(200)
+          .end(function(err, res) {
+            assert.ifError(err);
+            assert(res.body.username == 'newuser');
             done(err);
           });
       });
@@ -407,13 +487,50 @@ describe('User Controller', function() {
           .send({
             email: 'crapadminemail@example.com'
           })
-          .expect(400)
+          .expect(403)
           .end(function(err, res) {
 
             var user = res.body;
 
             assert.ifError(err);
             assert(_.isString(user.error), JSON.stringify(user));
+
+            done(err);
+
+          });
+
+      });
+
+
+      it('should not be able to read another user', function(done) {
+
+        request(sails.hooks.http.app)
+          .get('/user/' + adminUserId)
+          .set('Authorization', registeredAuth.Authorization)
+          .expect(403)
+          .end(function(err, res) {
+            var user = res.body;
+
+            assert.ifError(err);
+            assert(_.isString(user.error), JSON.stringify(user));
+
+            done(err);
+
+          });
+
+      });
+
+      it('should not be able to read all users', function(done) {
+
+        request(sails.hooks.http.app)
+          .get('/user/')
+          .set('Authorization', registeredAuth.Authorization)
+          .expect(200)
+          .end(function(err, res) {
+            var users = res.body;
+
+            assert.ifError(err);
+            assert(users.length == 1);
 
             done(err);
 

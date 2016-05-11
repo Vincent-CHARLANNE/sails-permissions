@@ -1,4 +1,5 @@
 var actionUtil = require('sails/lib/hooks/blueprints/actionUtil');
+var _ = require('lodash');
 
 /**
  * Query the Model that is being acted upon, and set it on the req object.
@@ -14,7 +15,7 @@ module.exports = function ModelPolicy (req, res, next) {
   req.options.modelDefinition = sails.models[req.options.modelIdentity];
   req.model = modelCache[req.options.modelIdentity];
 
-  if (_.isObject(req.model) && !_.isEmpty(req.model.id)) {
+  if (_.isObject(req.model) && !_.isNull(req.model.id)) {
     return next();
   }
 

@@ -5,6 +5,7 @@
  * Verify that the User fulfills permission 'where' conditions and attribute blacklist restrictions
  */
 var wlFilter = require('waterline-criteria');
+var _ = require('lodash');
 
 module.exports = function(req, res, next) {
   var permissions = req.permissions;
@@ -20,19 +21,40 @@ module.exports = function(req, res, next) {
   // if we are creating, we don't need to query the db, just check the where clause vs the passed in data
   if (action === 'create') {
     if (!PermissionService.hasPassingCriteria(body, permissions, body)) {
-      return res.badRequest({
+      return res.forbidden({
         error: 'Can\'t create this object, because of failing where clause'
       });
     }
     return next();
   }
 
+  // get all of the where clauses and blacklists into one flat array
+  // if a permission has no criteria then it is always true
+  var criteria = _.compact(_.flatten(
+    _.map(permissions, function(permission) {
+      if (_.isEmpty(permission.criteria)) {
+        permission.criteria = [{
+          where: {}
+        }];
+      }
+
+      var criteriaList = permission.criteria;
+      return _.map(criteriaList, function(criteria) {
+        // ensure criteria.where is initialized
+        criteria.where = criteria.where || {};
+
+        if (permission.relation == 'owner') {
+          criteria.where.owner = req.user.id;
+        }
+
+        return criteria;
+      });
+    })
+  ));
+
 
   // set up response filters if we are not mutating an existing object
   if (!_.contains(['update', 'delete'], action)) {
-
-    // get all of the where clauses and blacklists into one flat array
-    var criteria = _.compact(_.flatten(_.pluck(permissions, 'criteria')));
 
     if (criteria.length) {
       bindResponsePolicy(req, res, criteria);
@@ -49,7 +71,7 @@ module.exports = function(req, res, next) {
       }
 
       if (!PermissionService.hasPassingCriteria(objects, permissions, body, req.user.id)) {
-        return res.badRequest({
+        return res.forbidden({
           error: 'Can\'t ' + action + ', because of failing where clause or attribute permissions'
         });
       }
@@ -86,14 +108,14 @@ function responsePolicy(criteria, _data, options) {
     criteria.some(function(crit) {
       var filtered = wlFilter([item], {
         where: {
-          or: [crit.where || {}]
+          or: [crit.where]
         }
       }).results;
 
       if (filtered.length) {
 
         if (crit.blacklist && crit.blacklist.length) {
-          crit.blacklist.forEach(function (term) {
+          crit.blacklist.forEach(function(term) {
             delete item[term];
           });
         }
@@ -104,11 +126,13 @@ function responsePolicy(criteria, _data, options) {
     return memo;
   }, []);
 
-  if (permitted.length === 0) {
-    sails.log.silly('permitted.length === 0');
-    return res.send(404);
-  } else if (isResponseArray) {
+  if (isResponseArray) {
     return res._ok(permitted, options);
+  } else if (permitted.length === 0) {
+    sails.log.silly('permitted.length === 0');
+    return res.forbidden({
+        error: 'Cannot perform action [read] on foreign object'
+    });
   } else {
     res._ok(permitted[0], options);
   }

@@ -11,21 +11,22 @@ module.exports = function OwnerPolicy (req, res, next) {
   }
 
   /*
-  sails.log('OwnerPolicy user', req.user);
-  sails.log('OwnerPolicy method', req.method);
-  sails.log('OwnerPolicy req.body', req.body);
+  sails.log.verbose('OwnerPolicy user', req.user);
+  sails.log.verbose('OwnerPolicy method', req.method);
+  sails.log.verbose('OwnerPolicy req.body', req.body);
   */
 
   if (req.options.modelDefinition.autoCreatedBy === false) {
-    // sails.log('OwnerPolicy hasOwnershipPolicy: false');
+    // sails.log.verbose('OwnerPolicy hasOwnershipPolicy: false');
     return next();
   }
 
   if ('POST' == req.method) {
     //req.body || (req.body = { });
     req.body.createdBy = req.user.id;
+    req.body.owner = req.user.id;
   }
 
-  //sails.log('OwnerPolicy req.model', req.model);
+  //sails.log.verbose('OwnerPolicy req.model', req.model);
   next();
 };
