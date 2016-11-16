@@ -48,6 +48,15 @@ sails.config.permissions.adminUsername = 'admin'
 sails.config.permissions.adminEmail = 'admin@example.com'
 sails.config.permissions.adminPassword = 'admin1234'
 ```
+
+#### You can also override the admin user's properties (useful if your `User` model has other properties)
+
+```
+sails.config.permissions.adminUserAttributes = {
+  firstname: "Admin's first name",
+  lastname: "Admin's last name"
+}
+```
 #### 4. update configs
 
 #### config/policies.js
