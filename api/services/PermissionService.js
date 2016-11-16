@@ -320,8 +320,8 @@ module.exports = {
       return User.find({
         username: usernames
       }).then(function(users) {
-        users = _.filter(role.users, function(user){
-          return !_.includes(usernames, user.username);
+        users = _.filter(users, function(user){
+          return !_.includes(_.map(role.users, "username"), user.username);
         })
         role.users.add(_.pluck(users, 'id'));
         return role.save();
