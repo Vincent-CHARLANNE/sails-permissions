@@ -320,7 +320,7 @@ module.exports = {
       return User.find({
         username: usernames
       }).then(function(users) {
-        users = _.filter(users, function(user){
+        users = _.filter(role.users, function(user){
           return !_.includes(usernames, user.username);
         })
         role.users.add(_.pluck(users, 'id'));
