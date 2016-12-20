@@ -55,3 +55,15 @@ _.merge(exports, {
     }
   ]
 });
+exports.afterDestroy = exports.afterDestroy || [];
+exports.afterDestroy.push(function deletePermissions(users, cb){
+  try{
+    Permission.destroy({relation: "user", user: _.map(users, "id")}).exec(function(err){
+      if(err) sails.log.error(err);
+      return cb();
+    });
+  } catch (e) {
+    return cb(e);
+  }
+
+});

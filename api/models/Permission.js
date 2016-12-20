@@ -100,5 +100,15 @@ module.exports = {
 
       next();
     }
+  ],
+  afterDestroy: [
+    function deleteCriteriae(permissions, next){
+      if(_.isArray(permissions) && !_.isEmpty(permissions)){
+        Criteria.destroy({permission: _.map(permissions, "id")}).exec(function(err){
+          if(err) sails.log.error(err);
+          return cb();
+        });
+      }
+    }
   ]
 };
