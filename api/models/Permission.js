@@ -108,6 +108,8 @@ module.exports = {
           if(err) sails.log.error(err);
           return next();
         });
+      } else {
+        return next();
       }
     }
   ]
