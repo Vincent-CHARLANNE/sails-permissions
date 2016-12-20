@@ -106,7 +106,7 @@ module.exports = {
       if(_.isArray(permissions) && !_.isEmpty(permissions)){
         Criteria.destroy({permission: _.map(permissions, "id")}).exec(function(err){
           if(err) sails.log.error(err);
-          return cb();
+          return next();
         });
       }
     }
