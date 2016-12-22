@@ -44,7 +44,7 @@ module.exports = function (sails) {
         Model.count()
           .then(function (count) {
             if (count == sails.models.length) return next();
-
+            sails.log.silly("sails-permissions initializeFixtures");
             return initializeFixtures(sails)
               .then(function () {
                 sails.emit('hook:permissions:loaded');

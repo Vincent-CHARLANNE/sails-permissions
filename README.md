@@ -49,6 +49,18 @@ sails.config.permissions.adminEmail = 'admin@example.com'
 sails.config.permissions.adminPassword = 'admin1234'
 ```
 
+#### Configure custom actions
+
+Custom actions will be granted to the admin role.
+
+in `sails.config.permissions` you should define them like this :
+
+```
+  modelsPermissionsActionsMap: { "user": { findOne: "findOne" } },
+```
+
+You are mapping controller actions with permission actions.
+
 #### You can also override the admin user's properties (useful if your `User` model has other properties)
 
 ```

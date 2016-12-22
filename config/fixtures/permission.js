@@ -53,7 +53,15 @@ function grantAdminPermissions (roles, models, admin) {
   var permissions = _.flatten(_.map(models, function (modelEntity) {
     var model = sails.models[modelEntity.identity];
 
-    return _.map(grants.admin, function (permission) {
+    var adminGrants = grants.admin;
+    _.map(PermissionService.getModelMethodMap(modelEntity.identity), function(action, key){
+      adminGrants.push({
+        action: action
+      });
+    });
+    sails.log.silly("Grant admin permission", adminGrants);
+
+    return _.map(adminGrants, function (permission) {
       var newPermission = {
         model: modelEntity.id,
         action: permission.action,

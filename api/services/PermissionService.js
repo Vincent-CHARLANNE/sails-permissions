@@ -79,7 +79,7 @@ module.exports = {
    * @param options.user
    */
   findModelPermissions: function(options) {
-    var action = PermissionService.getMethod(options.method);
+    var action = PermissionService.getMethod(options);
     var permissionCriteria = {
       model: options.model.id,
       action: action
@@ -187,15 +187,36 @@ module.exports = {
    */
   getErrorMessage: function(options) {
     return [
-      'User', options.user.email, 'is not permitted to', options.method, options.model.name
+      'User', options.user.email, 'is not permitted to', PermissionService.getMethod(options), options.model.name
     ].join(' ');
+  },
+
+  getModelMethodMap: function(modelIdentity) {
+    if(
+      modelIdentity
+      && sails.config.permissions
+      && sails.config.permissions.modelsPermissionsActionsMap
+      && sails.config.permissions.modelsPermissionsActionsMap[modelIdentity]
+      && !_.isEmpty(sails.config.permissions.modelsPermissionsActionsMap[modelIdentity])
+    ){
+      return sails.config.permissions.modelsPermissionsActionsMap[modelIdentity];
+    }
   },
 
   /**
    * Given an action, return the CRUD method it maps to.
    */
-  getMethod: function(method) {
-    return methodMap[method];
+  getMethod: function(options) {
+    if(options.action
+      && options.model
+      && options.model.identity
+    ){
+      var modelMethodMap = PermissionService.getModelMethodMap(options.model.identity);
+      if(modelMethodMap && modelMethodMap[options.action]){
+        return modelMethodMap[options.action];
+      }
+    }
+    return methodMap[options.method];
   },
 
   /**
@@ -281,6 +302,10 @@ module.exports = {
           name: permission.model
         })])
         .spread(function(role, user, model) {
+          if(!model){
+            sails.log.error(new Error("no model found"), permission, model);
+            return Promise.reject(new Error('no model found'));
+          }
           permission.model = model.id;
           if (role && role.id) {
             permission.role = role.id;
