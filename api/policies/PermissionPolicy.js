@@ -20,13 +20,7 @@ var Promise = require('bluebird');
  * @param {Function} next
  */
 module.exports = function (req, res, next) {
-  var options = {
-    model: req.model,
-    method: req.method,
-    user: req.user,
-    // just to add the req in options
-    action: (req.options && req.options.action) ? req.options.action : null
-  };
+  var options = req;
 
   if (req.options.unknownModel) {
     return next();

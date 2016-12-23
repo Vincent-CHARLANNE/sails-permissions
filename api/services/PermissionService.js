@@ -207,16 +207,22 @@ module.exports = {
    * Given an action, return the CRUD method it maps to.
    */
   getMethod: function(options) {
-    if(options.action
+    var customAction;
+    if(options && options.action) {
+      customAction = options.action;
+    } else if(options && options.options && options.options.action) {
+      customAction = options.options.action;
+    }
+    if(customAction
       && options.model
       && options.model.identity
     ){
       var modelMethodMap = PermissionService.getModelMethodMap(options.model.identity);
-      if(modelMethodMap && modelMethodMap[options.action]){
-        return modelMethodMap[options.action];
+      if(modelMethodMap && modelMethodMap[customAction]){
+        return modelMethodMap[customAction];
       }
     }
-    return methodMap[options.method];
+    return methodMap[options.method || options];
   },
 
   /**
