@@ -105,7 +105,8 @@ function responsePolicy(criteria, _data, options) {
   sails.log.silly('criteria!', criteria);
 
   var permitted = data.reduce(function(memo, item) {
-    criteria.some(function(crit) {
+    var blacklists = [], passing = false;
+    _.forEach(criteria, function(crit) {
       var filtered = wlFilter([item], {
         where: {
           or: [crit.where]
@@ -113,16 +114,21 @@ function responsePolicy(criteria, _data, options) {
       }).results;
 
       if (filtered.length) {
-
         if (crit.blacklist && crit.blacklist.length) {
-          crit.blacklist.forEach(function(term) {
-            delete item[term];
-          });
+          blacklists.push(crit.blacklist);
         }
-        memo.push(item);
-        return true;
+        passing = true;
       }
     });
+    var _blacklists = _.intersection(blacklists);
+    if (_blacklists && _blacklists.length) {
+      _blacklists.forEach(function(term) {
+        delete item[term];
+      });
+    }
+    if(passing){
+      memo.push(item);
+    }
     return memo;
   }, []);
 
