@@ -14,7 +14,7 @@ module.exports = function(req, res, next) {
     return next();
   }
 
-  var action = PermissionService.getMethod(req.method);
+  var action = PermissionService.getMethod(req);
 
   var body = req.body || req.query;
 
