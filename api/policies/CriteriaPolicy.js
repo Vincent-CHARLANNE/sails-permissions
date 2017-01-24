@@ -120,7 +120,7 @@ function responsePolicy(criteria, _data, options) {
         passing = true;
       }
     });
-    var _blacklists = _.intersection(blacklists);
+    var _blacklists = _.intersection.apply(_, blacklists);
     if (_blacklists && _blacklists.length) {
       _blacklists.forEach(function(term) {
         delete item[term];
