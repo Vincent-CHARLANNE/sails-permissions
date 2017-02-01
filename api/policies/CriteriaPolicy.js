@@ -116,6 +116,9 @@ function responsePolicy(criteria, _data, options) {
       if (filtered.length) {
         if (crit.blacklist && crit.blacklist.length) {
           blacklists.push(crit.blacklist);
+        } else {
+          // no blacklist : show everything
+          blacklists.push([]);
         }
         passing = true;
       }
