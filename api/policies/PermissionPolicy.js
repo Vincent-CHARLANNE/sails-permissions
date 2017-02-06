@@ -26,7 +26,7 @@ module.exports = function (req, res, next) {
     return next();
   }
 
-  PermissionService
+  return PermissionService
     .findModelPermissions(options)
     .then(function (permissions) {
       sails.log.silly('PermissionPolicy:', permissions.length, 'permissions grant',
@@ -63,7 +63,7 @@ function responsePolicy (_data, options) {
   //sails.log.verbose('options', options);
 
   // TODO search populated associations
-  Promise.bind(this)
+  return Promise.bind(this)
     .map(data, function (object) {
       return user.getOwnershipRelation(data);
     })
