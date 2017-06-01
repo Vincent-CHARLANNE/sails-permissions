@@ -105,6 +105,8 @@ function responsePolicy(criteria, _data, options) {
   sails.log.silly('criteria!', criteria);
 
   var permitted = data.reduce(function(memo, item) {
+    // clone item to allow prototype values deletion
+    item = _.merge({}, item);
     var blacklists = [], passing = false;
     _.forEach(criteria, function(crit) {
       var filtered = wlFilter([item], {
