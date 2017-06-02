@@ -102,15 +102,26 @@ function responsePolicy(criteria, _data, options) {
 
   // get property names in the model that refer to associations of the "model" type
   // purpose : detect populated keys !
-  var modelAssociationsProperties = [];
+  var modelAssociations = [];
   if(req.options
     && req.options.associations
     && _.isArray(req.options.associations)){
-    modelAssociationsProperties = _.map(
+    modelAssociations =
+    _.map(
       _.filter(req.options.associations, {
         type: "model"
       }),
-      "alias"
+      function(association){
+        // add primary key
+        if(sails
+          && sails.models
+          && association.model
+          && sails.models[association.model]
+        ){
+          association.primaryKey = sails.models[association.model].primaryKey;
+        }
+        return association;
+      }
     );
   }
 
@@ -123,9 +134,9 @@ function responsePolicy(criteria, _data, options) {
     item = _.merge({}, item);
     // flatten item associations so that waterline filters work on populated values
     var fiterableItem = _.merge({}, item);
-    _.forEach(modelAssociationsProperties, function(prop){
-      if(fiterableItem[prop] && fiterableItem[prop].id){
-        fiterableItem[prop] = fiterableItem[prop].id;
+    _.forEach(modelAssociations, function(association){
+      if(fiterableItem[association.alias] && fiterableItem[association.alias][association.primaryKey]){
+        fiterableItem[association.alias] = fiterableItem[association.alias][association.primaryKey];
       }
     });
     var blacklists = [], passing = false;
