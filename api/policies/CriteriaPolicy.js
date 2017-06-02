@@ -100,6 +100,20 @@ function responsePolicy(criteria, _data, options) {
 
   var data = isResponseArray ? _data : [_data];
 
+  // get property names in the model that refer to associations of the "model" type
+  // purpose : detect populated keys !
+  var modelAssociationsProperties = [];
+  if(req.options
+    && req.options.associations
+    && _.isArray(req.options.associations)){
+    modelAssociationsProperties = _.map(
+      _.filter(req.options.associations, {
+        type: "model"
+      }),
+      "alias"
+    );
+  }
+
   sails.log.silly('data', data);
   sails.log.silly('options', options);
   sails.log.silly('criteria!', criteria);
@@ -107,9 +121,16 @@ function responsePolicy(criteria, _data, options) {
   var permitted = data.reduce(function(memo, item) {
     // clone item to allow prototype values deletion
     item = _.merge({}, item);
+    // flatten item associations so that waterline filters work on populated values
+    var fiterableItem = _.merge({}, item);
+    _.forEach(modelAssociationsProperties, function(prop){
+      if(fiterableItem[prop] && fiterableItem[prop].id){
+        fiterableItem[prop] = fiterableItem[prop].id;
+      }
+    });
     var blacklists = [], passing = false;
     _.forEach(criteria, function(crit) {
-      var filtered = wlFilter([item], {
+      var filtered = wlFilter([fiterableItem], {
         where: {
           or: [crit.where]
         }
