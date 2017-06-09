@@ -130,8 +130,10 @@ function responsePolicy(criteria, _data, options) {
   sails.log.silly('criteria!', criteria);
 
   var permitted = data.reduce(function(memo, item) {
-    // clone item to allow prototype values deletion
-    item = _.merge({}, item);
+    // item to plain object to allow prototype values deletion
+    if(typeof item.toObject === "function") {
+      item = item.toObject();
+    }
     // flatten item associations so that waterline filters work on populated values
     var fiterableItem = _.merge({}, item);
     _.forEach(modelAssociations, function(association){
