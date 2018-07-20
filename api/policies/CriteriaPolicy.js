@@ -100,14 +100,50 @@ function responsePolicy(criteria, _data, options) {
 
   var data = isResponseArray ? _data : [_data];
 
+  // get property names in the model that refer to associations of the "model" type
+  // purpose : detect populated keys !
+  var modelAssociations = [];
+  if(req.options
+    && req.options.associations
+    && _.isArray(req.options.associations)){
+    modelAssociations =
+    _.map(
+      _.filter(req.options.associations, {
+        type: "model"
+      }),
+      function(association){
+        // add primary key
+        if(sails
+          && sails.models
+          && association.model
+          && sails.models[association.model]
+        ){
+          association.primaryKey = sails.models[association.model].primaryKey;
+        }
+        return association;
+      }
+    );
+  }
+
   sails.log.silly('data', data);
   sails.log.silly('options', options);
   sails.log.silly('criteria!', criteria);
 
   var permitted = data.reduce(function(memo, item) {
+    // item to plain object to allow prototype values deletion
+    if(typeof item.toObject === "function") {
+      item = item.toObject();
+    }
+    // flatten item associations so that waterline filters work on populated values
+    var fiterableItem = _.merge({}, item);
+    _.forEach(modelAssociations, function(association){
+      if(fiterableItem[association.alias] && fiterableItem[association.alias][association.primaryKey]){
+        fiterableItem[association.alias] = fiterableItem[association.alias][association.primaryKey];
+      }
+    });
     var blacklists = [], passing = false;
     _.forEach(criteria, function(crit) {
-      var filtered = wlFilter([item], {
+      var filtered = wlFilter([fiterableItem], {
         where: {
           or: [crit.where]
         }
